@@ -1,11 +1,13 @@
 /不入库文件
 .dsh/storages/arrangements/session-73bacf78-4b5c-4c10-8d66-d79eb61d7d7f.json
 /.dsh
-# 仓库根的 junction（指向"当前生效那一份"的 live 预设），不入库
-/dialectic
-# 两个运维脚本：它们操作的是本机路径，不入库（要入库就把上面两行的忽略去掉）
-ds发布dialectic.ps1
-junction-dialectic.ps1
+
+# 仓库根的 dialectic\ 与 dialectic-test\ 是 junction（指向两个 home 的 live 预设）。
+# 它们**故意入库**：git 会把 junction 当目录走进去，于是两个区的预设内容都进入版本历史，
+# 这就是备份（见 README §二）。junction 里可能出现的东西照旧排除：
+/dialectic/node_modules/
+/dialectic-test/node_modules/
+
 # 仓库根的临时探针脚本，不入库
 _kazcheck/
 _preset-yml-check.mjs

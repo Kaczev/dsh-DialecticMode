@@ -17,36 +17,33 @@
 ## 二、拓扑（改文件前先读这节）
 
 ```
-真实源   %USERPROFILE%\.dsh-test\.agent-presets\dialectic\   ← 唯一要维护的地方
-                                                    ↑ junction（指向主区副本）
-仓库根   dsh-DialecticMode\dialectic\                        ← 查看/编辑入口（.gitignore 排除）
-主区副本 %USERPROFILE%\.dsh\.agent-presets\dialectic\        ← 已发布（VERSION 0.0.1）
+仓库根   dsh-DialecticMode\dialectic\        junction -> %USERPROFILE%\.dsh\.agent-presets\dialectic        （主区）
+         dsh-DialecticMode\dialectic-test\   junction -> %USERPROFILE%\.dsh-test\.agent-presets\dialectic   （测试区）
 ```
 
-- **改预设就改真实源**（测试区那份）。
-- **仓库根的 `dialectic\` junction 指向「当前发布的那一边」**：发布后指向主区副本，未发布时指向测试区真实源。所以从仓库进去看到的永远是"生效中的那一份"，而改动请回测试区改。
-- 仓库里**没有** `presets/` 目录：预设内容不在 git 追踪范围内，**唯一的版本历史在真实源本身**——别删 `.dsh-test\.agent-presets\dialectic\`。
+- **两个 junction 各自固定指向自己那一边**，不是"指向当前生效的那份"：`dialectic\` 永远是主区，`dialectic-test\` 永远是测试区。
+- **它们故意入库**——这是备份的关键：git 会把 junction 当目录走进去，于是**两个区的预设内容都进入版本历史**（`git add` 后 `git ls-files` 会列出 `dialectic/…` 与 `dialectic-test/…` 两组文件）。junction 本身不单独存，clone 回来是普通目录，用 `junction-dialectic.ps1` 即可恢复现场。
+- **改预设去测试区那一侧**（`dialectic-test\`，或直接改 `.dsh-test\.agent-presets\dialectic\`），发布后再把 `dialectic\` 那份一并提交——两边都进历史，回退才完整。
 - 预设自带的 `VERSION`（一行版本号，随目录发布）就是预设自己的版本，手工维护。
-- ⚠️ 仓库根的 `dialectic\` 是指向 live 预设的 junction，**别在仓库里跑 `git clean -fdx` / `git checkout -f`**——那类命令会顺着 junction 写坏预设。
+- ⚠️ 这两个 junction 指向 live 预设，**别在仓库里跑 `git clean -fdx` / `git checkout -f`**——那类命令会顺着 junction 写坏预设。
+- ⚠️ 本仓库的 `.ps1` **必须带 UTF-8 BOM**：Windows PowerShell 5.1 读无 BOM 的脚本会按 ANSI/GBK 解码，中文注释的字节被误读成乱码（其中含 `)` 或 `$` 时直接造成语法错误）。
 
 ## 三、发布到主区
 
 ```powershell
-# 只看差异（默认，不写入）
+# 只看差异与入口方向（默认，不写入）
 powershell -ExecutionPolicy Bypass -File .\ds发布dialectic.ps1
 
-# 真正发布：测试区 -> 主区
+# 真正发布：测试区 -> 主区，并把两个 junction 的方向校正回各自那一侧
 powershell -ExecutionPolicy Bypass -File .\ds发布dialectic.ps1 -Release
 ```
 
-脚本行为：逐文件 SHA256 比对 → 只复制差异 → 删除主区多余的 → 复制后再复验一次，不一致就报错退出；主区目标若是链接会直接拒绝（避免写穿 junction）。
+脚本做两件事：①**校正两个 junction 的方向**（放在文件比对之前，所以"文件已同步、入口还指反"也能纠回来）；②逐文件 SHA256 比对 → 只复制差异 → 删除主区多余的 → 复制后再复验一次，不一致就报错退出。主区目标若是链接会直接拒绝（避免写穿 junction）。
 
-发布后**记得把仓库 junction 指回主区**（让仓库入口等于"生效中的那一份"）：
+junction 方向不需要手工维护了——下面的命令只在需要重建时用：
 
 ```powershell
-$r = "C:\Users\Kaczev\Documents\GitHub\dsh-DialecticMode"
-cmd /c rmdir "$r\dialectic"
-New-Item -ItemType Junction -Path "$r\dialectic" -Target "$env:USERPROFILE\.dsh\.agent-presets\dialectic"
+powershell -ExecutionPolicy Bypass -File .\junction-dialectic.ps1 -Status
 ```
 
 两边的 roster 各自独立，所以分开验：
@@ -62,12 +59,15 @@ node "$d\check-presets-main.mjs"   # 主区（用主区自己的安装与 harnes
 
 ```powershell
 $d = ".\不入库文件\0.0.1 设计想法"
-node "$d\check-presets.mjs"           # roster：列出每个预设 + broken 原因
-node "$d\check-dialectic-preset.mjs"  # 组合 / persona / SKILL 的静态校验（20 项）
-node "$d\check-deployed-preset.mjs"   # 与官方 standard 逐 row 差集、部署版与源是否一致
+```powershell
+$d = ".\不入库文件\0.0.1 设计想法"
+node "$d\check-presets.mjs"           # 测试区 roster
+node "$d\check-presets-main.mjs"      # 主区 roster（用主区自己的安装与 harnessBase）
+node "$d\check-dialectic-preset.mjs"  # 组合 / persona / 两个 SKILL 的静态校验（27 项）
 node "$d\check-row-configs.mjs"       # 逐 row 比 config：漏抄必填 config、值被改短都会红
 node "$d\check-harness-identity.mjs"  # 遮开场白的模块实际注册了什么（14 项）
 node "$d\check-persona-text.mjs"      # persona 词数与文档自称是否一致
+node "$d\check-deployed-preset.mjs"   # 与官方 standard 逐 row 差集、两区是否逐字节一致
 ```
 
 这些脚本走发布实现自己的解析器与 schema（`entryListSchema` / `evaluate` / `discoverPresets`），不是复刻判定逻辑。改完预设先跑这几条，再开新会话看效果（预设热加载，不用重启进程）。
@@ -78,16 +78,18 @@ node "$d\check-persona-text.mjs"      # persona 词数与文档自称是否一�
 
 ```
 dsh-DialecticMode/
-  dialectic/                              ← junction -> 当前生效那一份的 live 预设（不入库）
+  dialectic/                              ← junction -> 主区 live 预设（入库：git 会走进去）
+  dialectic-test/                         ← junction -> 测试区 live 预设（入库）
   不入库文件/0.0.1 设计想法/                 ← 设计文档与校验脚本（不入库）
     方案v0.2.md                             # 定稿
     方案.md                                 # 过程记录（含被推翻的判断）
-  ds发布dialectic.ps1                       # 测试区 -> 主区，兼对齐仓库入口（不入库）
-  junction-dialectic.ps1                    # 单独重建那个 junction 时用（不入库）
+  ds发布dialectic.ps1                       # 测试区 -> 主区 + 校正两个入口（入库）
+  junction-dialectic.ps1                    # 需要重建 junction 时用（入库）
   README.md
+  LICENSE
 ```
 
-三个 `.mjs`／`_kazcheck` 之类的临时探针脚本请不要提交，`.gitignore` 已覆盖仓库根的常见项。
+`.ps1` 里的中文注释 + 必须带 BOM 这条见 §二。`_kazcheck/`、`_preset-yml-check.mjs` 之类的临时探针脚本不进仓库。
 
 live 预设自身（真实源）的内容：
 
