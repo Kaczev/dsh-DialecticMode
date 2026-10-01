@@ -1,11 +1,10 @@
-﻿# dialectic 预设的两区 junction
+# dialectic 预设的 junction
 #
-# 方向：仓库的 dialectic/ 与 test-dialectic/ 各是一个 junction，指回本仓库的
-# presets/dialectic/ —— 仓库是唯一事实源，这两个目录只是"另一条入口"，
-# 用来在资源管理器/编辑器里一眼看到它接的是哪两个 DSH home 的哪一份。
+# 方向：仓库的 dialectic/ 是一个 junction，指回**本机那个 DSH home** 的
+# `.agent-presets\dialectic\` —— 仓库里的这个入口只是"另一条路径"，
+# 用来在资源管理器/编辑器里一眼看到它接的是哪个 home 的哪一份。
 #
-#   dialectic/       -> <真实 home>\.agent-presets\dialectic      例如 .dsh
-#   test-dialectic/  -> <测试 home>\.agent-presets\dialectic      例如 .dsh-test
+#   dialectic/  ->  <home>\.agent-presets\dialectic      例如 .dsh
 #
 # 为什么不能反过来（junction 放在预设根）：
 #   `dsh-agent-presets` 的发现用 `readdir(..., { withFileTypes: true })` 之后判
@@ -13,20 +12,26 @@
 #   （实测：dirent.isDirectory=false / isSymbolicLink=true，stat 才说它是目录）。
 #   于是放在预设根里的 junction 不是"预设"，而是被跳过的一行 —— 表现为预设从选择器里消失。
 #
-# 因此两个 home 的预设目录必须是**真目录**，内容由仓库权威地同步过去：
-#   ds同步dialectic.ps1
-#
 # 用法：
 #   powershell -ExecutionPolicy Bypass -File .\junction-dialectic.ps1
-#   powershell -ExecutionPolicy Bypass -File .\junction-dialectic.ps1 -DshHome "$env:USERPROFILE\.dsh-test" -LinkName test-dialectic
+#   powershell -ExecutionPolicy Bypass -File .\junction-dialectic.ps1 -DshHome "$env:USERPROFILE\.dsh" -LinkName dialectic
 #   powershell -ExecutionPolicy Bypass -File .\junction-dialectic.ps1 -Status
 #   powershell -ExecutionPolicy Bypass -File .\junction-dialectic.ps1 -Remove
 #
-# 注意：本仓库里的 dialectic\ 与 test-dialectic\ 是 junction，别在仓库里跑
+# 注意：本仓库里的 dialectic\ 是 junction，别在仓库里跑
 # `git clean -fdx` / `git checkout -f` —— 那类命令会顺着 junction 写坏目标。
+#
+# 2026-10-01：测试区（`dialectic-test\` -> `C:\Users\Kaczev\.dsh-test\.agent-presets\dialectic`）
+# 按用户决定整个删除：`.dsh-test` 与两个启动器已在更早一次清理里删掉（释放 1.81 GB），
+# 仓库里只剩一个断链 junction。scripts 与文档随之收窄成单区；`-DshHome` 的默认值
+# 也从 `.dsh-test` 改回主 home `.dsh`（旧默认现在只会因目录不存在而直接报错）。
+# **不要再重建 `.dsh-test` 或 `dialectic-test/`**；要试新想法就走一次性 profile 或
+# 以 bundle 装进桌面端。本仓库里那几份仍写着两区的旧文档（README.md、
+# ds发布dialectic.ps1、ds安装dialectic.ps1）属于**已退役的网页端（CLI）那条线**，
+# 不在这次收窄的范围内，改不改由用户另行决定。
 
 param(
-  [string]$DshHome = (Join-Path $env:USERPROFILE '.dsh-test'),
+  [string]$DshHome = (Join-Path $env:USERPROFILE '.dsh'),
   [string]$LinkName = 'dialectic',
   [switch]$Status,
   [switch]$Remove,
@@ -44,9 +49,8 @@ function Get-Link([string]$Path) {
 
 if ($Status) {
   Write-Host "repo      : $Repo"
-  $source = Join-Path $Repo 'presets\dialectic'
-  Write-Host "source    : $source  $(if (Test-Path $source) { 'OK' } else { 'MISSING' })"
-  foreach ($name in @('dialectic', 'test-dialectic')) {
+  Write-Host "home      : $DshHome"
+  foreach ($name in @('dialectic')) {
     $p = Join-Path $Repo $name
     $item = Get-Link $p
     if ($null -eq $item) { Write-Host ("{0,-15}: absent" -f $name); continue }
