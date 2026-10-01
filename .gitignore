@@ -6,6 +6,15 @@
 # 当目录走进去，于是预设内容进入版本历史——这就是备份。junction 里可能出现的杂物照旧排除：
 /dialectic/node_modules/
 
+# dialectic\ 里的这两个是 make-bundle-patch.mjs 的**生成物**，不是源。
+# 源是 dialectic\agent.cordis.yml（配 preset.yml / VERSION）；重新生成：
+#   $env:ELECTRON_RUN_AS_NODE=1; & "<安装目录>\DeepSeek Harness.exe" .\make-bundle-patch.mjs
+/dialectic/package.json
+/dialectic/cordis.patch.yml
+
+# 仓库根的临时快照 / 草稿目录（与 Kaz 仓库同一约定；根锚定，放子目录里不会生效）
+/.tmp-*/
+
 # 仓库根的临时探针脚本，不入库
 _kazcheck/
 _preset-yml-check.mjs

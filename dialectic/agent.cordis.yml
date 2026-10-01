@@ -222,8 +222,12 @@
         backgroundMode: one-shot
         maxDepth: provider-managed
 
-    - id: workflow-worker-thread
-      name: '@deepseek-ai/dsh-workflow-worker-thread'
+    # 行名与包名 2026-10-01 对齐到官方 standard（0.1.7 起就叫 workflow-ptc）。
+    # 旧名 `@deepseek-ai/dsh-workflow-worker-thread` 在 0.1.7 与桌面端 0.2.0-rc.2 的包表里
+    # 都不存在——本机 `.dsh\profiles\node_modules\@deepseek-ai\` 里那条已经是个**断链**，
+    # 所以这一行在网页端也一直是挂不上的；留着它会让整个 delegation 组挂载失败。
+    - id: workflow-ptc
+      name: '@deepseek-ai/dsh-workflow-ptc'
       config:
         provider: spawn
 
