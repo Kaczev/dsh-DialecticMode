@@ -1,8 +1,8 @@
 # dsh-DialecticMode
 
-> 给 DeepSeek Harness（dsh）做的一个 **agent preset**：把"辩证的反例检验"做成一套**有门槛的固定动作**——第一版可能错、且错得代价高的场合才启动，两轮内必须出结论，输出只给决策与理由。
+> 给 DeepSeek Harness（dsh）**桌面端**做的一个 **agent preset**：把"辩证的反例检验"做成一套**有门槛的固定动作**——第一版可能错、且错得代价高的场合才启动，两轮内必须出结论，输出只给决策与理由。
 >
-> 当前版本 **0.0.1**。
+> 当前版本 **0.0.1**（写在 `dialectic\VERSION`，实际值是 `0.0.1-b`）。
 
 ## 一、这是什么
 
@@ -14,65 +14,56 @@
 
 保留完整工具面是刻意的：这样对照实验比的是"同一套工具面 + 一个 persona"，而不是"两套工具面"。
 
-## 二、两个版本
+预设本体就是 `dialectic\` 这一个目录：`preset.yml`、`agent.cordis.yml`、`suppress-harness-identity.mjs`、`VERSION`，加上 `skills\` 里的两条技能。
 
-| 目录 | 是什么 | 装它的人 |
-|---|---|---|
-| **`dialectic/`** | **正式版**，稳定、可长期用 | 普通用户装这个 |
-| `dialectic-test/` | **实验版**，随时会改、可能挂不上，只用于试新想法 | 想跟着一起试的人 |
+## 二、装它（桌面端，两步）
 
-两个目录里的内容就是预设本体（`preset.yml`、`agent.cordis.yml`、两个 `SKILL.md`、`suppress-harness-identity.mjs`、`VERSION`）。正式版与实验版的差别只在里面那份内容，用法完全一样。
+前提：Windows；dsh **桌面端**（宿主运行时 0.2.0-rc.2 或更新）；仓库在本机。
 
-## 三、安装
-
-前置：Windows；dsh 运行时 `0.1.5-rc.2`；你的 DSH home 下已有 profile（`<home>\profiles\<profile>\node_modules`）。默认 home 是 `%USERPROFILE%\.dsh`。
+**第 1 步：生成 bundle 文件**（在仓库根目录跑）
 
 ```powershell
-# 装正式版（默认）
-powershell -ExecutionPolicy Bypass -File .\ds安装dialectic.ps1
-
-# 指定 home
-powershell -ExecutionPolicy Bypass -File .\ds安装dialectic.ps1 -DshHome "$env:USERPROFILE\.dsh-test"
-
-# 装实验版（不稳定）
-powershell -ExecutionPolicy Bypass -File .\ds安装dialectic.ps1 -Source dialectic-test
-
-# 只看它会做什么，不写入
-powershell -ExecutionPolicy Bypass -File .\ds安装dialectic.ps1 -DryRun
+$env:ELECTRON_RUN_AS_NODE='1'
+& "$env:LOCALAPPDATA\Programs\DeepSeek Harness\DeepSeek Harness.exe" .\make-bundle-patch.mjs
 ```
 
-脚本把预设**复制**进 `<home>\.agent-presets\dialectic\`，复制完逐文件核对一遍，不一致就报错退出。
+它会写出两个**生成物**（都不入库，别手改）：`dialectic\cordis.patch.yml`（一行 `insert`，把预设声明成 `preset-dialectic`）与 `dialectic\package.json`（`dialectic-preset-bundle` 的包元数据，版本号取自 `dialectic\VERSION`）。
 
-装完**开一个新会话**，在预设选择器里选 **Dialectic 模式**（预设是热加载的，不用重启进程）。
+**第 2 步：在桌面端里装它**
 
-不想用脚本也可以手工装：把 `dialectic\` 目录里的文件整个复制到 `<home>\.agent-presets\dialectic\` 即可——一个预设就是这么一个文件夹（`preset.yml`、`agent.cordis.yml`、`suppress-harness-identity.mjs`、`VERSION` 和 `skills\`）。
+在桌面端的一个会话里让代理调用 `plugin_manager`：
 
-## 四、用起来是什么样
+```json
+{ "action": "install_bundle", "target": "<仓库的绝对路径>\\dialectic" }
+```
+
+**更新已有安装**时先 `remove_bundle`（`target: "dialectic-preset-bundle"`）再 `install_bundle`——`install_bundle` 对已经装着的同一个 bundle 不是幂等的。
+
+**生效**：补丁层即时重载；改 `suppress-harness-identity.mjs` 这类**代码**要重启桌面端。装完**开一个新会话**才看得到新模式（已挂载的会话保留它启动时的插件修订）。
+
+## 三、用起来是什么样
 
 - **该干活就干活**：答案能用测试、编译器、类型、规范或文档机械核对时，它直接做并核对，不会硬跑一轮"反例检验"。
 - **前提可疑才启动**：请求建立在没审过的假设上、第一版来自"看起来像"的模式匹配、要替换一个还能用的东西、或者它察觉自己在因为你想听而附和——这时才做一轮反例检验，**至多两轮**。
 - **输出只有结论与理由**：不给"正题—反题—合题"的过程稿，只说明改了什么、为什么；改过了会讲清楚改了什么，没改会说"经得起检查"。
 - **不确定就标出来**：材料里的说法要么核过、要么标明没核，不把猜测讲成事实。
 
-## 五、验证装好了没有
+## 四、验证装好了没有
 
-1. **开一个新会话**，在预设选择器里能看到 **Dialectic 模式**（id 是 `dialectic`，列表里排在其他用户预设之间）。
-2. 选它、随便聊一句，看行为对不对：该机械核对的任务直接做，不会硬演一轮"辩证过程"。
-3. 想确认是否装成功，看安装目录：`<home>\.agent-presets\dialectic\` 里应有 `preset.yml`、`agent.cordis.yml`、`suppress-harness-identity.mjs`、`VERSION` 和 `skills\`。
+1. `plugin_manager`，`action: list_plugins`：应有 `include:preset-dialectic`，`fiberPhase` 为 `active`，**没有 diagnostic**。
+2. **开一个新会话**，模式列表里能看到 **Dialectic 模式**（id 是 `dialectic`）。
+3. 选它、随便聊一句：persona 是辩证人格，而且 host 注入的那句 `You are an AI agent powered by …` 开场白**不出现**（`suppress-harness-identity.mjs` 生效）。
 
-如果它**没出现**在选择器里：先看 `preset.yml` 的 `name`/`description` 有没有被改坏（格式错了这个预设会从列表里消失），再看目录名是不是 `dialectic`。重新跑一次安装脚本最省事——脚本会先删掉旧的再复制。
+如果它**没出现**在模式列表里：先看 `preset.yml` 的 `name`／`description` 有没有被改坏（格式错了这个预设会从列表里消失），再看 `list_plugins` 里那条 row 的 diagnostic。
 
-## 六、维护者请看
+## 五、维护者
 
-本仓库有两个目录名看起来像"两份一样的东西"，实际不是：
+- **`dialectic\agent.cordis.yml` 是装配的唯一事实源**；`dialectic\cordis.patch.yml` 与 `dialectic\package.json` 是 `make-bundle-patch.mjs` 的生成物（都不入库）。改了事实源就重跑生成器——生成器会断言每个相对 `name` 都已被改写成绝对 file URL，漏一个就报错。
+- `dialectic\` 在本机是**真目录**（不再是 junction）。桌面端 profile 的 `node_modules\dialectic-preset-bundle` 是指向它的符号链接——改仓库就是改生效的那份。
+- 2026-10-01 起**没有"两个版本"这件事**：实验版（`dialectic-test\`）与配套的 `.dsh-test` home、`ds安装dialectic.ps1`、`ds发布dialectic.ps1`、`junction-dialectic.ps1` 都已删除（前两者是网页端/CLI 交付的工具，需要时从 git 历史取）。要试新想法就在这个目录里试，或者另开一个一次性 profile。
+- 这一版在**事实源**上修掉了一个坏包名：`@deepseek-ai/dsh-workflow-worker-thread` 在 dsh 0.1.7 与 0.2.0-rc.2 的包表里都不存在（本机依赖树里那条还是个断链），已改成 `@deepseek-ai/dsh-workflow-ptc`、行 id 同步改成 `workflow-ptc`。留着旧名会让整个 delegation 组挂载失败。
+- 这个预设**没有自己的运行时依赖**：`suppress-harness-identity.mjs` 只 import 平台提供的东西，所以 `dialectic\` 下不需要 `node_modules`。
 
-- `dialectic\` —— **正式版**（用户装这个）
-- `dialectic-test\` —— **实验版**（不稳定，随时会改）
-
-它们在本机是两张"活的"视图，内容分别对应开发者机器上的两个 dsh home；`ds安装dialectic.ps1`、`ds发布dialectic.ps1`、`junction-dialectic.ps1` 是配套的脚本，用法写在各自脚本头部。**接线细节（哪边是源、怎么发布、校验脚本清单、为什么某个目录必须是真目录而不是链接）不在 README 里**——那是本机的事，写在开发者本地的维护笔记中。
-
-改预设请改 `dialectic-test\` 那一侧，验证通过后再同步到 `dialectic\`，两边都要提交——只提交一边，回退时另一边就是空的。
-
-## 七、许可
+## 六、许可
 
 见 `LICENSE`。
