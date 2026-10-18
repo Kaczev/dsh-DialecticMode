@@ -15,8 +15,10 @@
 # 为什么 skills 目录用那段 createRequire 表达式，而不是 new URL('skills/', baseUrl)：
 # 预设行在**挂载时**的 baseUrl 是 profile 目录（实测 file:///<home>/profiles/desktop/），
 # 不是本补丁文件所在目录——写成 new URL('skills/', baseUrl) 会指向 <profile>/skills，
-# 那里什么都没有，而且不报错，只是技能悄悄不见了。bundle 以 link: 装进 profile，
-# 所以拿 baseUrl 作解析基点去 require 自己的 package.json，拿到的才是本目录的真实路径。
+# 那里什么都没有，而且不报错，只是技能悄悄不见了。bundle 装在 profile 的 node_modules 下
+# （本地开发时是 link:，从 npm 安装时是包本身），所以拿 baseUrl 作解析基点去 require 自己的
+# package.json，拿到的才是本目录的真实路径。包名 `dsh-dialecticmode` 与 package.json 的 name
+# 必须一致：改包名就要同步改这一行。
 
 - insert:
     - id: preset-dialectic
@@ -107,7 +109,7 @@
             config:
               # 解析基点是 profile 目录，不是补丁文件目录；见文件头的说明。
               customSkillDirs:
-                - !!js "process.getBuiltinModule('node:path').join(process.getBuiltinModule('node:path').dirname(process.getBuiltinModule('node:module').createRequire(baseUrl).resolve('dialectic-preset-bundle/package.json')), 'skills')"
+                - !!js "process.getBuiltinModule('node:path').join(process.getBuiltinModule('node:path').dirname(process.getBuiltinModule('node:module').createRequire(baseUrl).resolve('dsh-dialecticmode/package.json')), 'skills')"
           - id: tool-skill
             name: '@deepseek-ai/dsh-tool-skill'
           - id: command-goal

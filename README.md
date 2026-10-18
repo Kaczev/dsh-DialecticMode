@@ -20,17 +20,19 @@
 
 ## 安装
 
-前提是 Windows、dsh 桌面端（本机实测宿主运行时 0.2.1-rc.2），并且仓库在本机上。`check-composition.mjs` 会按你实际装的那一份 standard 校验。
+预设发布在 npm 上，包名 **`dsh-dialecticmode`**。前提是 Windows 和 dsh 桌面端（本机实测宿主运行时 0.2.1-rc.2）。本机不用留仓库副本。
 
-在桌面端开一个会话，让代理调用 `plugin_manager`：
+在桌面端插件页点 **添加插件**，输入：
 
-```json
-{ "action": "install_bundle", "target": "<仓库的绝对路径>\\dialectic" }
+```
+dsh-dialecticmode
 ```
 
-更新已有安装时，先用 `remove_bundle`（`target: "dialectic-preset-bundle"`）卸掉，再装一次。`install_bundle` 对已经装着的同一个 bundle 不幂等。
+要钉版本就写 `dsh-dialecticmode@0.0.3`。装完点 **立即启用**，然后**开一个新会话**，模式列表里会出现 Dialectic 模式。命令行等价物是 `dsh plugin add dsh-dialecticmode`。
 
-bundle 以 `link:` 装进 profile，所以 `dialectic\` 就是生效的那份，改文件即改行为。补丁层由 HMR 监视、即时重载，但新的预设修订要开一个新会话才拿得到，已挂载的会话保留它启动时的插件修订。
+更新已有安装时先卸载 `dsh-dialecticmode` 再装一次：`install_bundle` 对已经装着的同一个 bundle 不幂等。已挂载的会话保留它启动时的插件修订，新的预设修订要开一个新会话才拿得到。
+
+bundle 随包装进 profile 的 `node_modules\dsh-dialecticmode`。本地开发时仍可以用 `plugin_manager` 的 `install_bundle` 指向 `dialectic\` 的绝对路径，那样装进来的是 `link:`，改文件即改行为；补丁层由 HMR 监视、即时重载。
 
 0.0.2 起没有生成步骤。0.0.1 的 `make-bundle-patch.mjs`、`agent.cordis.yml`、`preset.yml` 都已删除，它们服务于 dsh 0.2.0 的预设目录机制（`.agent-presets\<id>\` 目录发现）。0.2.1 改成「预设就是一条 `@deepseek-ai/dsh-agent-preset` 补丁行」，既没有目录发现，也没有第二个文件要同步。
 
@@ -63,9 +65,10 @@ bundle 以 `link:` 装进 profile，所以 `dialectic\` 就是生效的那份，
 - dsh 升级时，把新版本 `…\resources\app.asar\dsh\node_modules\@deepseek-ai\dsh-web-app\presets\standard.patch.yml` 的行抄过来，重新套上那两处改动，再跑 `check-composition.mjs`。对不上时脚本会逐条说明差在哪。
 - 0.2.1 有三个坑，都是这次改动里踩过的：
   1. `{{cwd}}` 不再是已注册变量。persona 不能再写 `suffix: Your working directory is {{cwd}}.`，写了提示装配会直接失败。工作目录由 runtime context（`Current working directory`）提供，与标准模式一致。
-  2. 预设行在挂载时的 `baseUrl` 是 profile 目录，不是补丁文件目录。`new URL('skills/', baseUrl)` 会指向 `<profile>\skills`，那里什么都没有，而且不报错，技能就这么悄悄消失了。必须用 `createRequire(baseUrl).resolve('dialectic-preset-bundle/package.json')` 反查本项目录，bundle 以 `link:` 装着，profile 里能解析到。
+  2. 预设行在挂载时的 `baseUrl` 是 profile 目录，不是补丁文件目录。`new URL('skills/', baseUrl)` 会指向 `<profile>\skills`，那里什么都没有，而且不报错，技能就这么悄悄消失了。必须用 `createRequire(baseUrl).resolve('dsh-dialecticmode/package.json')` 反查本项目录，bundle 在 profile 的 `node_modules` 里（`link:` 或 npm 安装都能解析到）。改包名就要同步改这行，否则技能静默消失。
   3. 0.2.0 的写法不再跟 standard 一致：`backgroundMode: continuable`、`tool-ralph`、`tool-subagent-codex` / `claude-code` 这些 extra row 都不是 standard 的一部分，已随本次对齐删除；`time-context` 与 `tool-schedule` 是 standard 新加的，已补上。
 - `dialectic\` 没有运行时依赖。预设里没有自己的 `.mjs` 插件，`check-composition.mjs` 只在维护时用安装目录里的 `yaml`。
+- 发版：改 `dialectic\VERSION` 与 `package.json.version`（两处必须一致），跑 `check-composition.mjs`，提交、推远端，然后 `cd dialectic; npm publish`。包名 `dsh-dialecticmode` 已经固定，改了要同步改补丁里那行 `createRequire`，以及 `check-composition.mjs` 里对它的断言。`dialectic\README.md` 与 `dialectic\LICENSE` 是 npm 页面用的副本，正文以仓库根的两份为准。
 - 历史：0.0.1 的 `suppress-harness-identity.mjs` 用同名空段遮住 host 开场白，`agent.cordis.yml` / `preset.yml` 走目录预设，`make-bundle-patch.mjs` 负责把它复制成补丁层。这些随 0.2.1 的机制变化一并退役，需要时从 git 历史取。0.0.3 把人格与两条技能的人称统一成第二人称（原人格用 "We"），并把版本号从误发的 `0.2.1` 改回 `0.0.3`，那个同名标签与提交已从远端撤掉。0.0.3 这一版后来又重写过一次这份 README，预设本体的行为没有变化，所以版本号不动。
 
 ## 许可

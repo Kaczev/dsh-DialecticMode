@@ -73,9 +73,13 @@ if (typeof row.config?.name !== "string" || row.config.name.length === 0) fail("
 if (typeof row.config?.description !== "string" || row.config.description.length === 0) fail("preset description is missing");
 
 const pkg = JSON.parse(readFileSync(join(PRESET_DIR, "package.json"), "utf8"));
-if (pkg.name !== "dialectic-preset-bundle") fail(`package.json name is ${JSON.stringify(pkg.name)}`);
+if (pkg.name !== "dsh-dialecticmode") fail(`package.json name is ${JSON.stringify(pkg.name)}, expected "dsh-dialecticmode" (the npm package name)`);
+if (pkg.private === true) fail("package.json is private, so `npm publish` would refuse it");
 if (pkg.dsh?.bundle?.patch?.length !== 1 || pkg.dsh.bundle.patch[0] !== "./cordis.patch.yml") {
   fail(`package.json dsh.bundle.patch is ${JSON.stringify(pkg.dsh?.bundle?.patch)}`);
+}
+if (!Array.isArray(pkg.files) || !pkg.files.includes("cordis.patch.yml") || !pkg.files.includes("skills")) {
+  fail(`package.json files is ${JSON.stringify(pkg.files)}; the tarball must carry cordis.patch.yml and skills`);
 }
 const version = readFileSync(join(PRESET_DIR, "VERSION"), "utf8").trim();
 if (pkg.version !== version) fail(`package.json version ${pkg.version} != VERSION ${version}`);
@@ -178,7 +182,7 @@ if (!Array.isArray(configured) || configured.length !== 1) fail(`customSkillDirs
 else {
   const keys = Object.keys(skillRow.config).join(",");
   if (keys !== "customSkillDirs") fail(`skill-filesystem config has extra keys: ${keys}`);
-  if (!configured[0].includes("dialectic-preset-bundle/package.json")) fail("customSkillDirs does not resolve the bundle's own package.json");
+  if (!configured[0].includes(`${pkg.name}/package.json`)) fail(`customSkillDirs does not resolve the bundle's own package.json (${pkg.name})`);
 
   // Evaluate the expression exactly as the loader does at mount time: baseUrl is the profile directory.
   const dshHome = process.env.DSH_HOME || join(homedir(), ".dsh");
