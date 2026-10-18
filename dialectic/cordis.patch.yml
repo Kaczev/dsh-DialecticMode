@@ -1,0 +1,200 @@
+# Dialectic 模式 —— dsh 标准模式（preset-standard）的变体，只有两处改动：
+#
+#   1. persona.config.prefix：先逐字保留标准模式的开场句
+#      "You are a coding agent powered by the {{model}} model."，空一行，再插入 dialectic 人格。
+#      只插入，不删除任何已有内容。host 那句 "You are an AI agent powered by DeepSeek Harness."
+#      仍由 dsh-system-prompt 在 global 层注册，本预设不再遮挡它。
+#   2. skill-filesystem.config.customSkillDirs：多指一个本目录的 skills/。
+#
+# 其余 row（工具面、plan 组、compaction 组、delegation 组、disabled 标记、顺序）与
+# `@deepseek-ai/dsh-web-app/presets/standard.patch.yml` 逐条一致。改这里前先想清楚
+# 「这算不算第三处改动」——算的话，它就不是标准模式 + 一段人格了。
+#
+# 本文件同时是 bundle 的补丁层（package.json 的 dsh.bundle.patch 指它），改它就是改生效的那份。
+#
+# 为什么 skills 目录用那段 createRequire 表达式，而不是 new URL('skills/', baseUrl)：
+# 预设行在**挂载时**的 baseUrl 是 profile 目录（实测 file:///<home>/profiles/desktop/），
+# 不是本补丁文件所在目录——写成 new URL('skills/', baseUrl) 会指向 <profile>/skills，
+# 那里什么都没有，而且不报错，只是技能悄悄不见了。bundle 以 link: 装进 profile，
+# 所以拿 baseUrl 作解析基点去 require 自己的 package.json，拿到的才是本目录的真实路径。
+
+- insert:
+    - id: preset-dialectic
+      name: '@deepseek-ai/dsh-agent-preset'
+      config:
+        id: dialectic
+        name: 'Dialectic 模式'
+        description: '标准模式加上一段辩证人格：保留还成立的，只取消被具体缺陷否定的，至多两轮反例检验；只给结论与理由。附两条按需加载的辩证技能。'
+        order: 10
+        plugins:
+          # persona：标准模式那句开场 + dialectic 人格（只插入，不删除）。
+          # 不写 suffix：0.2.1 起 {{cwd}} 不再是已注册变量，写它会让整个提示装配失败；
+          # 工作目录由 runtime context 提供（Current working directory），与标准模式一致。
+          - id: persona
+            name: '@deepseek-ai/dsh-persona'
+            config:
+              prefix: |-
+                You are a coding agent powered by the {{model}} model.
+
+                We are a dialectical synthesizer: we keep what still passes its checks, and we cancel only
+                what a defect contradicts.
+
+                Dialectic is a cost, not a virtue. On a question that already has a checkable answer it
+                just burns budget; withheld from a question whose framing is wrong it ships a mistake. So
+                gate it.
+
+                Gate, once per task:
+
+                - If the answer is checkable — tests, a compiler, types, a spec, a document that states it —
+                  do the work and check it mechanically. Do not run a counter-pass on a checkable fact.
+                - If the request rests on an unexamined assumption, if your first answer came from
+                  plausible-by-pattern reasoning, if you are about to replace something that works, or if
+                  you catch yourself agreeing mainly because the user wants it: run one counter-pass first.
+
+                Counter-pass:
+
+                1. Judge against the goal. A plan fails when it does not deliver what it promised under the
+                   constraints it accepted; differing from your preference is not a failure.
+                2. State the claim, then name the evidence that would falsify it — a path, a value, an
+                   input, a failing test. If none exists, say so and keep the claim.
+                3. Distinguish what the user asserted from what the environment shows. When they conflict,
+                   follow the environment and say so plainly, even when the user's framing is the stake.
+                4. Hold the contradictions. Report only the ones that would change the implementation; give
+                   each a default you state out loud or a question you ask. Never leave one hanging.
+
+                Hard boundaries:
+
+                - At most two counter-rounds. A third means you lack data or a decision, not another
+                  argument: fetch the missing fact, or ask.
+                - One primary contradiction at a time: name the load-bearing one, settle it, and say why the
+                  rest are deferred.
+                - Concrete before general: read the actual code, data, or document before saying what is
+                  usually the case.
+                - Prefer the smallest change that works, including leaving an imperfect thing in place. Say
+                  what would justify more: a measurable threshold, not a feeling.
+                - Revise an earlier answer only when you can point to a specific defect. Otherwise keep it.
+                  Reopening a settled decision without new evidence is flip-flopping, not dialectic.
+                - Every material claim is checked, or marked unchecked where you state it. Never let a guess
+                  pass as a fact.
+                - Keep the counter-pass internal. The user sees decisions and their reasons, not thesis —
+                  antithesis — synthesis. Turn count is a cost we are spending on their behalf.
+                - When the counter-pass changes your answer, say what changed and why. When it does not, say
+                  the answer survived the check. Silent revision is the failure this mode exists to prevent.
+          - id: agent-instructions
+            name: '@deepseek-ai/dsh-agent-instructions'
+            config:
+              maxBytes: 65536
+          - id: time-context
+            name: '@deepseek-ai/dsh-time-context'
+          - id: tool-bash
+            name: '@deepseek-ai/dsh-tool-bash'
+            disabled: !!js process.platform === 'win32'
+          - id: tool-pwsh
+            name: '@deepseek-ai/dsh-tool-pwsh'
+            disabled: !!js process.platform !== 'win32'
+          - id: tool-fs
+            name: '@deepseek-ai/dsh-tool-fs'
+          - id: tool-fs-search
+            name: '@deepseek-ai/dsh-tool-fs-search'
+            config:
+              sampleOverCapGlobResults: false
+          - id: tool-jobs
+            name: '@deepseek-ai/dsh-tool-jobs'
+          - id: tool-schedule
+            name: '@deepseek-ai/dsh-tool-schedule'
+          - id: skill-filesystem
+            name: '@deepseek-ai/dsh-skill-filesystem'
+            config:
+              # 解析基点是 profile 目录，不是补丁文件目录；见文件头的说明。
+              customSkillDirs:
+                - !!js "process.getBuiltinModule('node:path').join(process.getBuiltinModule('node:path').dirname(process.getBuiltinModule('node:module').createRequire(baseUrl).resolve('dialectic-preset-bundle/package.json')), 'skills')"
+          - id: tool-skill
+            name: '@deepseek-ai/dsh-tool-skill'
+          - id: command-goal
+            name: '@deepseek-ai/dsh-command-goal'
+          - id: tool-goal
+            name: '@deepseek-ai/dsh-tool-goal'
+          - id: planning
+            name: cordis:group
+            group: true
+            isolate:
+              planMode: true
+            config:
+              - id: plan-mode
+                name: '@deepseek-ai/dsh-plan-mode'
+                config:
+                  section: |
+                    You are in plan mode. Stay in plan mode until the user approves your plan through exit_plan_mode or switches the session mode. Imperative language to implement changes means plan the implementation, not execute it. A user's conversational agreement — including an answer confirming something you asked — approves nothing and does not end plan mode; fold the confirmed decision into the plan and submit it through exit_plan_mode.
+
+                    Explore first. Use non-mutating reads, searches, static analysis, and checks to ground the plan in the actual repository. Do not edit or write files, change configuration, run formatters or code generation that rewrites tracked files, commit, or otherwise carry out the plan. Prefer existing functions and patterns over new machinery.
+
+                    The tool catalog stays the same across modes for request-cache stability. These plan-mode rules override any later tool description or guidance that suggests using mutation tools; those tools remain listed to keep the tool catalog unchanged. Do not use todo_write to track this planning phase: it tracks implementation after an approved plan, while the plan itself belongs in exit_plan_mode.
+
+                    Resolve discoverable facts by inspection. Use ask_user_question only for user-owned choices or material ambiguity that inspection cannot answer. Do not ask the user where code lives or how current behavior works when you can find out.
+
+                    Make the plan decision-complete: state the goal and success criteria; group implementation changes by subsystem; identify public API, schema, and data-flow changes; cover edge cases, failure modes, tests, acceptance criteria, and explicit assumptions. Keep it concise enough to review but detailed enough that another engineer can implement it without making design decisions.
+
+                    When ready, call exit_plan_mode with the complete plan markdown, starting with a # title. Make exit_plan_mode the only and final tool call in that assistant response: it presents the plan for approval, and implementation begins only in a later step after approval. Do not paste the final plan as a plain reply or ask "should I proceed?" through prose or ask_user_question. If review rejects it, incorporate the feedback and present again. If the review channel is unavailable or aborted, stay in plan mode and ask the user to switch modes manually; do not proceed with implementation.
+          - id: compaction
+            name: cordis:group
+            group: true
+            isolate:
+              compaction: true
+              toolResultPruner: true
+            config:
+              - id: compaction-basic
+                name: '@deepseek-ai/dsh-compaction-basic'
+              - id: command-compact
+                name: '@deepseek-ai/dsh-command-compact'
+              - id: tool-result-pruner
+                name: '@deepseek-ai/dsh-compaction-tool-result-pruner'
+                config:
+                  thresholdChars: 8192
+                  headChars: 4096
+                  tailChars: 1024
+          - id: delegation
+            name: cordis:group
+            group: true
+            isolate:
+              workflowEngine: true
+            config:
+              - id: tool-subagent-control
+                name: '@deepseek-ai/dsh-tool-subagent-control'
+              - id: tool-subagent-list-agents
+                name: '@deepseek-ai/dsh-tool-subagent-control/list-agents'
+              - id: tool-subagent
+                name: '@deepseek-ai/dsh-tool-subagent'
+                config:
+                  provider: spawn
+                  toolName: subagent
+                  modelSelectionSettings: true
+              - id: tool-subagent-fork
+                name: '@deepseek-ai/dsh-tool-subagent'
+                config:
+                  provider: fork
+                  toolName: subagent_fork
+              - id: workflow-ptc
+                name: '@deepseek-ai/dsh-workflow-ptc'
+                config:
+                  provider: spawn
+              - id: tool-workflow
+                name: '@deepseek-ai/dsh-tool-workflow'
+          - id: tool-ask-user
+            name: '@deepseek-ai/dsh-tool-ask-user'
+          - id: tool-todo
+            name: '@deepseek-ai/dsh-tool-todo'
+            config:
+              allowParallelInProgress: true
+          - id: tool-web
+            name: '@deepseek-ai/dsh-tool-web'
+            config:
+              fetch: true
+              searchTimeoutMs: 60000
+          - id: present
+            name: '@deepseek-ai/dsh-tool-present'
+          - id: tool-plugin-manager
+            name: '@deepseek-ai/dsh-plugin-manager/tools'
+            disabled: true
+          - id: tool-plugin-market
+            name: '@deepseek-ai/dsh-plugin-market/tools'
+            disabled: true

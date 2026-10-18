@@ -1,35 +1,25 @@
 # dsh-DialecticMode
 
-> 给 DeepSeek Harness（dsh）**桌面端**做的一个 **agent preset**：把"辩证的反例检验"做成一套**有门槛的固定动作**——第一版可能错、且错得代价高的场合才启动，两轮内必须出结论，输出只给决策与理由。
+> 给 DeepSeek Harness（dsh）**桌面端**做的一个 **agent preset**：标准模式 + 一段辩证人格 + 两条按需加载的技能。
 >
-> 当前版本 **0.0.1**（写在 `dialectic\VERSION`，实际值是 `0.0.1-b`）。
+> 当前版本 **0.0.2**（写在 `dialectic\VERSION`）。
 
 ## 一、这是什么
 
-一个 **标准模式的变体**：工具面与官方 `standard` 预设逐条对齐（含 goal、plan 模式、子代理、工作流），只差三处——
+一个**标准模式的变体**。与官方 `standard` 预设的差集只有两处：
 
-1. **persona** 换成 dialectic 人格（`We are a dialectical synthesizer: …`）；
-2. **自带两条按需加载的技能**，按**使用时机**拆：`dialectic-counter-case`（动手前四条：可证伪点、用户主张 vs 环境、对照既定标准、只报会改变实现的矛盾）、`dialectic-verify`（交付前四条：只按具体缺陷改、保留还能通过检验的、找卡住验收的那条约束、独立作答并回归全量）。每条都注明治什么病、怎么误用、以及出处；
-3. **去掉 host 注入的开场白** `You are an AI agent powered by DeepSeek Harness.`（只在预设作用域内去掉，不影响别的预设）。
+1. **persona 只插入、不删除**：prefix 先逐字保留标准模式的开场句 `You are a coding agent powered by the {{model}} model.`，空一行，再插入 dialectic 人格。host 注入的 `You are an AI agent powered by DeepSeek Harness.` 也照旧保留——0.0.1 曾用一个小模块把它遮掉，0.0.2 起不再遮。
+2. **自带两条技能**：`dialectic-counter-case`（动手前四条：可证伪点、用户主张 vs 环境、对照既定标准、只报会改变实现的矛盾）与 `dialectic-verify`（交付前四条：只按具体缺陷改、保留还能通过检验的、找卡住验收的那条约束、独立作答并回归全量），通过 `skill-filesystem` 的 `customSkillDirs` 加进来。
 
-保留完整工具面是刻意的：这样对照实验比的是"同一套工具面 + 一个 persona"，而不是"两套工具面"。
+其余 row（工具面、goal、plan 模式、compaction、子代理与工作流、`disabled` 标记、顺序）与 `@deepseek-ai/dsh-web-app/presets/standard.patch.yml` **逐条一致**。`check-composition.mjs` 直接拿安装目录里的 standard 做差集来守这一条。
 
-预设本体就是 `dialectic\` 这一个目录：`preset.yml`、`agent.cordis.yml`、`suppress-harness-identity.mjs`、`VERSION`，加上 `skills\` 里的两条技能。
+保留完整工具面是刻意的：这样对照实验比的是"同一套工具面 + 一段人格"，而不是"两套工具面"。
 
-## 二、装它（桌面端，两步）
+预设本体就是 `dialectic\` 这一个目录：`cordis.patch.yml`（唯一事实源）、`package.json`（bundle 元数据）、`VERSION`，加上 `skills\` 里的两条技能。
 
-前提：Windows；dsh **桌面端**（宿主运行时 0.2.0-rc.2 或更新）；仓库在本机。
+## 二、装它（桌面端，一步）
 
-**第 1 步：生成 bundle 文件**（在仓库根目录跑）
-
-```powershell
-$env:ELECTRON_RUN_AS_NODE='1'
-& "$env:LOCALAPPDATA\Programs\DeepSeek Harness\DeepSeek Harness.exe" .\make-bundle-patch.mjs
-```
-
-它会写出两个**生成物**（都不入库，别手改）：`dialectic\cordis.patch.yml`（一行 `insert`，把预设声明成 `preset-dialectic`）与 `dialectic\package.json`（`dialectic-preset-bundle` 的包元数据，版本号取自 `dialectic\VERSION`）。
-
-**第 2 步：在桌面端里装它**
+前提：Windows；dsh **桌面端**（本机实测宿主运行时 **0.2.1-rc.2**；`check-composition.mjs` 会按你实际装的那一份 standard 校验）；仓库在本机。
 
 在桌面端的一个会话里让代理调用 `plugin_manager`：
 
@@ -39,7 +29,9 @@ $env:ELECTRON_RUN_AS_NODE='1'
 
 **更新已有安装**时先 `remove_bundle`（`target: "dialectic-preset-bundle"`）再 `install_bundle`——`install_bundle` 对已经装着的同一个 bundle 不是幂等的。
 
-**生效**：补丁层即时重载；改 `suppress-harness-identity.mjs` 这类**代码**要重启桌面端。装完**开一个新会话**才看得到新模式（已挂载的会话保留它启动时的插件修订）。
+**生效**：bundle 以 `link:` 装进 profile，`dialectic\` 就是生效的那份，改文件即改行为；补丁层由 HMR 监视、即时重载，但**要开一个新会话**才拿得到新的预设修订（已挂载的会话保留它启动时的插件修订）。
+
+**0.0.2 起没有生成步骤**：0.0.1 的 `make-bundle-patch.mjs`、`agent.cordis.yml`、`preset.yml` 已删除。它们服务于 dsh 0.2.0 的"预设目录"机制（`.agent-presets\<id>\` 目录发现），0.2.1 已改成"预设就是一条 `@deepseek-ai/dsh-agent-preset` 补丁行"，没有目录发现、也没有第二个文件要同步。
 
 ## 三、用起来是什么样
 
@@ -47,22 +39,33 @@ $env:ELECTRON_RUN_AS_NODE='1'
 - **前提可疑才启动**：请求建立在没审过的假设上、第一版来自"看起来像"的模式匹配、要替换一个还能用的东西、或者它察觉自己在因为你想听而附和——这时才做一轮反例检验，**至多两轮**。
 - **输出只有结论与理由**：不给"正题—反题—合题"的过程稿，只说明改了什么、为什么；改过了会讲清楚改了什么，没改会说"经得起检查"。
 - **不确定就标出来**：材料里的说法要么核过、要么标明没核，不把猜测讲成事实。
+- **原有的话都还在**：`You are an AI agent powered by DeepSeek Harness.` 与 `You are a coding agent powered by the … model.` 两句都在，dialectic 人格接在后面。
 
 ## 四、验证装好了没有
 
-1. `plugin_manager`，`action: list_plugins`：应有 `include:preset-dialectic`，`fiberPhase` 为 `active`，**没有 diagnostic**。
-2. **开一个新会话**，模式列表里能看到 **Dialectic 模式**（id 是 `dialectic`）。
-3. 选它、随便聊一句：persona 是辩证人格，而且 host 注入的那句 `You are an AI agent powered by …` 开场白**不出现**（`suppress-harness-identity.mjs` 生效）。
+1. `plugin_manager`，`action: list_plugins`：应有 `include:preset-dialectic`，`fiberPhase` 为 `active`。这只证明声明行装上了；子插件的挂载结果看第 2 步。
+2. **开一个新会话**：模式列表里能看到 **Dialectic 模式**（id 是 `dialectic`），选中后不报 broken；系统提示里 dialectic 人格在，上面那两句也**都**在；技能目录里有 `dialectic-counter-case` 与 `dialectic-verify` 两条。
+3. **离线检查**（连会话都不用开，用的是安装目录里的官方 standard）：
 
-如果它**没出现**在模式列表里：先看 `preset.yml` 的 `name`／`description` 有没有被改坏（格式错了这个预设会从列表里消失），再看 `list_plugins` 里那条 row 的 diagnostic。
+   ```powershell
+   $env:ELECTRON_RUN_AS_NODE='1'
+   & "$env:LOCALAPPDATA\Programs\DeepSeek Harness\DeepSeek Harness.exe" .\check-composition.mjs
+   ```
+
+   最后一行是 `OK` 即通过。它会核对：补丁层与 bundle 元数据、与 standard 的 row 列表逐条相同、差集只有 `persona.config.prefix` 与 `skill-filesystem.config` 两处、persona 不再带 `suffix`、不出现 `{{cwd}}`、两条技能的 frontmatter 合格、`customSkillDirs` 表达式在 profile 目录上真的解析到本目录。
+
+如果它**没出现**在模式列表里、或者出现但被标成 broken：先跑第 3 步——差集多了、row 少了、skills 路径解析不到，脚本都会点名；它验的是同一个组合，比肉眼看模式列表更早发现问题。
 
 ## 五、维护者
 
-- **`dialectic\agent.cordis.yml` 是装配的唯一事实源**；`dialectic\cordis.patch.yml` 与 `dialectic\package.json` 是 `make-bundle-patch.mjs` 的生成物（都不入库）。改了事实源就重跑生成器——生成器会断言每个相对 `name` 都已被改写成绝对 file URL，漏一个就报错。
-- `dialectic\` 在本机是**真目录**（不再是 junction）。桌面端 profile 的 `node_modules\dialectic-preset-bundle` 是指向它的符号链接——改仓库就是改生效的那份。
-- 2026-10-01 起**没有"两个版本"这件事**：实验版（`dialectic-test\`）与配套的 `.dsh-test` home、`ds安装dialectic.ps1`、`ds发布dialectic.ps1`、`junction-dialectic.ps1` 都已删除（前两者是网页端/CLI 交付的工具，需要时从 git 历史取）。要试新想法就在这个目录里试，或者另开一个一次性 profile。
-- 这一版在**事实源**上修掉了一个坏包名：`@deepseek-ai/dsh-workflow-worker-thread` 在 dsh 0.1.7 与 0.2.0-rc.2 的包表里都不存在（本机依赖树里那条还是个断链），已改成 `@deepseek-ai/dsh-workflow-ptc`、行 id 同步改成 `workflow-ptc`。留着旧名会让整个 delegation 组挂载失败。
-- 这个预设**没有自己的运行时依赖**：`suppress-harness-identity.mjs` 只 import 平台提供的东西，所以 `dialectic\` 下不需要 `node_modules`。
+- **`dialectic\cordis.patch.yml` 是装配的唯一事实源**，也是 bundle 的补丁层（`package.json` 的 `dsh.bundle.patch` 指它）。`VERSION` 与 `package.json.version` 必须一致，检查脚本会核对。
+- **dsh 升级时怎么跟**：把新版本 `…\resources\app.asar\dsh\node_modules\@deepseek-ai\dsh-web-app\presets\standard.patch.yml` 的行抄过来，重新套上那两处改动，跑 `check-composition.mjs`。它对不上时会逐条告诉你差在哪。
+- **三个 0.2.1 的坑**（都在这次改动里踩过）：
+  1. **`{{cwd}}` 不再是已注册变量**。persona 不能再写 `suffix: Your working directory is {{cwd}}.`——提示装配会直接失败。工作目录由 runtime context（`Current working directory`）提供，与标准模式一致。
+  2. **预设行在挂载时的 `baseUrl` 是 profile 目录**，不是补丁文件目录。`new URL('skills/', baseUrl)` 会指向 `<profile>\skills`，那里什么都没有，而且不报错——技能悄悄消失。必须用 `createRequire(baseUrl).resolve('dialectic-preset-bundle/package.json')` 反查本项目录（bundle 以 `link:` 装着，profile 里能解析到）。
+  3. **0.2.0 的写法不再跟 standard 一致**：`backgroundMode: continuable`、`tool-ralph`、`tool-subagent-codex` / `claude-code` 这些 extra row 都不是 standard 的一部分，已随本次对齐删除；`time-context` 与 `tool-schedule` 是 standard 新加的，已补上。
+- **`dialectic\` 没有运行时依赖**：预设里没有自己的 `.mjs` 插件，`check-composition.mjs` 只在维护时用安装目录里的 `yaml`。
+- 历史：0.0.1 的 `suppress-harness-identity.mjs` 用同名空段遮住 host 开场白，`agent.cordis.yml` / `preset.yml` 走目录预设，`make-bundle-patch.mjs` 负责把它复制成补丁层。这些随 0.2.1 的机制变化一并退役，需要时从 git 历史取。
 
 ## 六、许可
 
