@@ -126,7 +126,7 @@ const dialecticText = prefix.startsWith(`${opener}\n\n`) ? prefix.slice(opener.l
 if (!prefix.startsWith(`${opener}\n\n`)) fail(`persona prefix does not start with the standard opener ${JSON.stringify(opener)}`);
 if ("suffix" in (persona?.config ?? {})) fail("persona config carries a suffix; standard has none, and a {{cwd}} suffix fails prompt assembly");
 for (const fragment of [
-  "We are a dialectical synthesizer",
+  "You are a dialectical synthesizer",
   "At most two counter-rounds",
   "Revise an earlier answer only when you can point to a specific defect",
   "Keep the counter-pass internal",

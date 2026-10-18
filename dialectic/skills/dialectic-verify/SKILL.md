@@ -3,9 +3,9 @@ name: dialectic-verify
 description: Use before shipping or revising a draft, fix, plan, or review - when a working thing is about to be replaced, when a fix looks local, when a change needs an acceptance criterion, or when you are tempted to rewrite rather than repair.
 ---
 
-# Verify: deciding what to keep, what to change, and how far to look
+# Verify: decide what to keep, what to change, and how far to look
 
-Four moves for the moment after a draft exists. They decide whether to revise at all, how much of the
+Four moves for the moment after a draft exists. They decide whether you revise at all, how much of the
 existing thing survives, and where the work stops. The persona carries the gate and the two-round
 limit; this file is the set of moves available inside that limit.
 
@@ -40,7 +40,7 @@ instead of treating it as a permanent property.
 ## 4. Answer each verification question independently, then check the whole
 
 Ask the check question, answer it from the material alone, and only then compare it to your draft.
-Reading your own draft and feeling that it looks right is not verification. After changing a part,
+Reading your own draft and feeling that it looks right is not verification. After you change a part,
 re-run the whole check and report what it broke elsewhere: enumerate callers, consumers, downstream
 checks.
 
@@ -59,4 +59,4 @@ Kept separate from the instructions so a move is never decorated with a name it 
 | 1 | Hegel's *determinate negation*, from the text: "when the result is apprehended as determinate negation, a new form has thereby immediately arisen" (*Phenomenology*, Introduction §79); "because the result, the negation, is a determinate negation, it has a content" (*Science of Logic*). |
 | 2 | Hegel's *aufheben*, which he gives as two meanings — to preserve, and to cause to cease (*Science of Logic*, Being §184–186). The common third meaning ("elevate") is an addition of English translation and popular reading, not Hegel's. Do not write "sublation"; write the two actions. |
 | 3 | The binding-constraint move for the threshold part: Hegel's node-line of measure relations (*Science of Logic* — water, chemical nodes, the musical scale: the interruption of gradualness, the leap). "Quantity into quality" is the Engels-textbook formula, not Hegel's phrase. |
-| 4 | Chain-of-Verification, whose load-bearing design choice is independent answering. The whole-system half is general systems theory and cybernetics, **not** a dialectical tradition — no authoritative source connects feedback loops back to dialectics, so cite it as systems science. |
+| 4 | Chain-of-Verification, whose load-bearing design choice is independent answering. The whole-system half is general systems theory and cybernetics, **not** a dialectical tradition — no authoritative source connects feedback loops back to dialectics, so cite it as systems science. The mapping onto these four moves is the one this mode adds. |

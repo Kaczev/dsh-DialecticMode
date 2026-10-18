@@ -2,7 +2,7 @@
 
 > 给 DeepSeek Harness（dsh）**桌面端**做的一个 **agent preset**：标准模式 + 一段辩证人格 + 两条按需加载的技能。
 >
-> 当前版本 **0.0.2**（写在 `dialectic\VERSION`）。
+> 当前版本 **0.0.3**（写在 `dialectic\VERSION`）。
 
 ## 一、这是什么
 
@@ -39,7 +39,7 @@
 - **前提可疑才启动**：请求建立在没审过的假设上、第一版来自"看起来像"的模式匹配、要替换一个还能用的东西、或者它察觉自己在因为你想听而附和——这时才做一轮反例检验，**至多两轮**。
 - **输出只有结论与理由**：不给"正题—反题—合题"的过程稿，只说明改了什么、为什么；改过了会讲清楚改了什么，没改会说"经得起检查"。
 - **不确定就标出来**：材料里的说法要么核过、要么标明没核，不把猜测讲成事实。
-- **原有的话都还在**：`You are an AI agent powered by DeepSeek Harness.` 与 `You are a coding agent powered by the … model.` 两句都在，dialectic 人格接在后面。
+- **原有的话都还在**：`You are an AI agent powered by DeepSeek Harness.` 与 `You are a coding agent powered by the … model.` 两句都在，dialectic 人格以 `You are a dialectical synthesizer: …` 接在后面。**0.0.3 起全篇统一第二人称**：人格与两条技能都不再用 "We"，与官方 skill 一样对读者说 "you"；仅有《矛盾论》出处那一行以来源注释（"the mapping … this mode adds"）说明映射是本项目加的，不指向模型。
 
 ## 四、验证装好了没有
 
@@ -65,7 +65,7 @@
   2. **预设行在挂载时的 `baseUrl` 是 profile 目录**，不是补丁文件目录。`new URL('skills/', baseUrl)` 会指向 `<profile>\skills`，那里什么都没有，而且不报错——技能悄悄消失。必须用 `createRequire(baseUrl).resolve('dialectic-preset-bundle/package.json')` 反查本项目录（bundle 以 `link:` 装着，profile 里能解析到）。
   3. **0.2.0 的写法不再跟 standard 一致**：`backgroundMode: continuable`、`tool-ralph`、`tool-subagent-codex` / `claude-code` 这些 extra row 都不是 standard 的一部分，已随本次对齐删除；`time-context` 与 `tool-schedule` 是 standard 新加的，已补上。
 - **`dialectic\` 没有运行时依赖**：预设里没有自己的 `.mjs` 插件，`check-composition.mjs` 只在维护时用安装目录里的 `yaml`。
-- 历史：0.0.1 的 `suppress-harness-identity.mjs` 用同名空段遮住 host 开场白，`agent.cordis.yml` / `preset.yml` 走目录预设，`make-bundle-patch.mjs` 负责把它复制成补丁层。这些随 0.2.1 的机制变化一并退役，需要时从 git 历史取。
+- 历史：0.0.1 的 `suppress-harness-identity.mjs` 用同名空段遮住 host 开场白，`agent.cordis.yml` / `preset.yml` 走目录预设，`make-bundle-patch.mjs` 负责把它复制成补丁层。这些随 0.2.1 的机制变化一并退役，需要时从 git 历史取。0.0.3 把人格与两条技能的人称统一成第二人称（原人格用 "We"），并把版本号从误发的 `0.2.1` 改回 `0.0.3`；那个同名标签与提交已从远端撤掉。
 
 ## 六、许可
 
