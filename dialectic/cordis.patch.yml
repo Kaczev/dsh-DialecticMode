@@ -12,6 +12,15 @@
 #
 # 本文件同时是 bundle 的补丁层（package.json 的 dsh.bundle.patch 指它），改它就是改生效的那份。
 #
+# 为什么这一行的 name 写本包（dsh-dialecticmode）而不是 @deepseek-ai/dsh-agent-preset：
+# 插件页「包含的组件」按行的 name 取 meta（readPluginMeta(row.name, 挂载时的 baseUrl)），
+# 行图标与行标题都只来自那个模块，没有按行覆盖的余地。直插上游，行上就只剩上游的默认占位图
+# 与「Agent 预设定义」。本包用 preset.js 把上游默认导出原样 re-export（类、Config、inject、
+# EntryGroup 全随类），自己持有这一行，图标与标题（locale/）才落在 Dialectic 身上。
+# 与 bundle 卡片的标题无关：卡片标题走 readPluginMeta(包名)，由 locale/en.json、locale/zh.json
+# 提供，缺了才会回落到裸包名。
+
+#
 # 为什么 skills 目录用那段 createRequire 表达式，而不是 new URL('skills/', baseUrl)：
 # 预设行在**挂载时**的 baseUrl 是 profile 目录（实测 file:///<home>/profiles/desktop/），
 # 不是本补丁文件所在目录——写成 new URL('skills/', baseUrl) 会指向 <profile>/skills，
@@ -22,7 +31,7 @@
 
 - insert:
     - id: preset-dialectic
-      name: '@deepseek-ai/dsh-agent-preset'
+      name: 'dsh-dialecticmode'
       config:
         id: dialectic
         name: 'Dialectic 模式'

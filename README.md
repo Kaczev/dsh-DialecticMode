@@ -31,6 +31,8 @@ Dialectic 是 DeepSeek Harness（DSH）的一个编码代理预设。它在标�
 
 [装配补丁](./dialectic/cordis.patch.yml)定义整个预设。设计上，它相对 DSH 标准模式只增加两项内容：在标准 persona 开场句之后追加辩证指令，以及注册本包的技能目录。宿主身份说明保留，工具组合、计划模式、目标工具、上下文压缩和代理委派等配置按标准模式对齐。
 
+补丁插入的那一行由本包自己持有（`name: dsh-dialecticmode`），插件实现仍是上游的 `@deepseek-ai/dsh-agent-preset`：[preset.js](./dialectic/preset.js) 把它的默认导出原样再导出一次。插件页的「包含的组件」按行的包名取标题与图标，没有按行覆盖的余地；行归本包，[图标](./dialectic/icon.svg)与 [locale/](./dialectic/locale/) 里的名称才落在那一行上。包清单把该上游包列为可选 peer，链接安装时宿主只把声明为 peer 的包路由到应用自带的那份。
+
 Dialectic 随包提供两条按需加载的技能：
 
 ### 动手前：dialectic-counter-case

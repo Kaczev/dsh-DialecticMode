@@ -67,7 +67,9 @@ try {
 }
 
 if (row.id !== "preset-dialectic") fail(`row id is ${JSON.stringify(row.id)}, expected "preset-dialectic"`);
-if (row.name !== "@deepseek-ai/dsh-agent-preset") fail(`row name is ${JSON.stringify(row.name)}`);
+if (row.name !== "dsh-dialecticmode") {
+  fail(`row name is ${JSON.stringify(row.name)}, expected "dsh-dialecticmode" (the bundle owns the row so its icon and title apply)`);
+}
 if (row.config?.id !== "dialectic") fail(`preset id is ${JSON.stringify(row.config?.id)}`);
 if (row.config?.order !== 10) fail(`preset order is ${JSON.stringify(row.config?.order)}`);
 if (typeof row.config?.name !== "string" || row.config.name.length === 0) fail("preset display name is missing");
@@ -81,6 +83,22 @@ if (pkg.dsh?.bundle?.patch?.length !== 1 || pkg.dsh.bundle.patch[0] !== "./cordi
 }
 if (!Array.isArray(pkg.files) || !pkg.files.includes("cordis.patch.yml") || !pkg.files.includes("skills")) {
   fail(`package.json files is ${JSON.stringify(pkg.files)}; the tarball must carry cordis.patch.yml and skills`);
+}
+if (row.name !== pkg.name) fail(`row name ${JSON.stringify(row.name)} != package name ${JSON.stringify(pkg.name)}`);
+if (pkg.main !== "./preset.js") fail(`package.json main is ${JSON.stringify(pkg.main)}, expected "./preset.js"`);
+if (pkg.exports?.["."] !== "./preset.js") fail(`package.json exports["."] is ${JSON.stringify(pkg.exports?.["."])}`);
+if (pkg.exports?.["./package.json"] !== "./package.json") {
+  fail('package.json must export "./package.json": the patch resolves its own manifest through the package name');
+}
+if (!pkg.files.includes("preset.js") || !pkg.files.includes("locale")) {
+  fail(`package.json files is ${JSON.stringify(pkg.files)}; the tarball must carry preset.js and locale`);
+}
+const presetSource = readFileSync(join(PRESET_DIR, "preset.js"), "utf8");
+if (!/export\s*\{\s*default\s*\}\s*from\s*['"]@deepseek-ai\/dsh-agent-preset['"]/u.test(presetSource)) {
+  fail("preset.js must re-export the default plugin of '@deepseek-ai/dsh-agent-preset'");
+}
+if (!Object.hasOwn(pkg.peerDependencies ?? {}, "@deepseek-ai/dsh-agent-preset")) {
+  fail("package.json must list '@deepseek-ai/dsh-agent-preset' in peerDependencies: the linked layer only routes host packages declared as peers");
 }
 const version = readFileSync(join(PRESET_DIR, "VERSION"), "utf8").trim();
 if (pkg.version !== version) fail(`package.json version ${pkg.version} != VERSION ${version}`);

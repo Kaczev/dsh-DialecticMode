@@ -1,9 +1,25 @@
 {
     "name": "dsh-dialecticmode",
     "version": "0.0.4",
-    "description": "Dialectic 模式：dsh 标准模式加一段辩证人格，以及两条按需加载的辩证技能。",
+    "description": "dsh 标准模式加一段辩证人格，以及两条按需加载的辩证技能。",
     "license": "MIT",
     "icon": "./icon.svg",
+    "main": "./preset.js",
+    "peerDependencies": {
+        "@deepseek-ai/dsh-agent-preset": ">=0.2.1-rc.3"
+    },
+    "peerDependenciesMeta": {
+        "@deepseek-ai/dsh-agent-preset": {
+            "optional": true
+        }
+    },
+    "exports": {
+        ".": "./preset.js",
+        "./icon": "./icon.svg",
+        "./icon.svg": "./icon.svg",
+        "./locale/*.json": "./locale/*.json",
+        "./package.json": "./package.json"
+    },
     "author": "Kaczev",
     "homepage": "https://github.com/Kaczev/dsh-DialecticMode#readme",
     "repository": {
@@ -23,7 +39,9 @@
     "files": [
         "cordis.patch.yml",
         "VERSION",
+        "preset.js",
         "skills",
+        "locale",
         "icon.svg",
         "README.md",
         "LICENSE"
