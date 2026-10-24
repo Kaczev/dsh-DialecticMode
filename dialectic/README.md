@@ -2,7 +2,7 @@
 
 Dialectic 是 DeepSeek Harness（DSH）的一个编码代理预设。它在标准模式的基础上加入辩证判断的工作指令：先检查关键假设，保留仍然成立的部分，只针对具体缺陷修改方案。
 
-当前版本 **0.0.4**。支持 **DSH v0.2.1-rc.3 及以上版本**，npm 包名为 `dsh-dialecticmode`。
+当前版本 **0.0.5**。支持 **DSH v0.2.1-rc.3 及以上版本**，npm 包名为 `dsh-dialecticmode`。
 
 ## 什么时候用
 
@@ -21,7 +21,7 @@ Dialectic 是 DeepSeek Harness（DSH）的一个编码代理预设。它在标�
 
 ## 安装与使用
 
-1. 在 DSH 桌面端插件页添加 `dsh-dialecticmode`，安装并启用。需要固定当前版本时，输入 `dsh-dialecticmode@0.0.4`。
+1. 在 DSH 桌面端插件页添加 `dsh-dialecticmode`，安装并启用。需要固定当前版本时，输入 `dsh-dialecticmode@0.0.5`。
 2. 新建会话，在模式列表中选择 **Dialectic 模式**，预设 ID 为 `dialectic`。
 3. 照常提出任务，并提供目标、约束和已有材料。模型应先读相关材料，再决定是否需要反例检验。
 
