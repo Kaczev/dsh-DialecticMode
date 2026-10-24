@@ -1,78 +1,84 @@
-# dsh-DialecticMode
+# Dialectic 模式
 
-给 DeepSeek Harness（dsh）桌面端用的一个 agent preset：标准模式加一段辩证人格，再加两条按需加载的技能。
+Dialectic 是 DeepSeek Harness（DSH）的一个编码代理预设。它在标准模式的基础上加入辩证判断的工作指令：先检查关键假设，保留仍然成立的部分，只针对具体缺陷修改方案。
 
-当前版本 **0.0.4**，版本号写在 `dialectic\VERSION`。
+当前版本 **0.0.4**。支持 **DSH v0.2.1-rc.3 及以上版本**，npm 包名为 `dsh-dialecticmode`。
 
-## 这是什么
+## 什么时候用
 
-它是标准模式的一个变体。与官方 `standard` 预设相比，只有两处不同。
+当你需要判断一个方案是否值得重写、排查需求中的冲突，或者担心模型只是顺着你的说法回答时，可以选择 Dialectic。预设要求模型把用户的主张和实际代码、数据、文档分开核对，按任务已经接受的目标与约束作判断。
 
-第一处是人格。prefix 先逐字保留标准模式的开场句 `You are a coding agent powered by the {{model}} model.`，空一行，然后接上 dialectic 人格。host 注入的 `You are an AI agent powered by DeepSeek Harness.` 也留着。0.0.1 曾用一个小模块遮掉这句话，0.0.2 起不再遮。
+能用测试、编译器、类型或明确文档直接核对的问题，仍然直接做、直接检查。只有请求依赖未经检查的假设、方案来自表面相似的经验、准备替换仍能工作的实现，或模型察觉自己在迎合用户时，才进行反例检验。
 
-第二处是技能。`dialectic-counter-case` 给出动手前的四条动作：说清主张和能推翻它的那一个事实、把用户的主张和环境显示的情况分开、拿用户自己说过的标准来检验、只报会改变实现的矛盾。`dialectic-verify` 给出交付前的四条动作：指得出具体缺陷才改且只改它要求的部分、留下还能通过检验的、找出当前卡住验收的那条约束、先独立作答再回归全量。这两条技能通过 `skill-filesystem` 的 `customSkillDirs` 加进来。
+反例检验有明确的停止条件：
 
-其余 row 与 `@deepseek-ai/dsh-web-app/presets/standard.patch.yml` 逐条一致，包括工具面、goal、plan 模式、compaction、子代理与工作流、`disabled` 标记和顺序。`check-composition.mjs` 拿安装目录里的 standard 做差集，专门守这一条。
+- 每次处理一个会改变实施方向的主要矛盾，其他问题说明暂缓的原因。
+- 最多两轮；仍然无法判断，就补充事实或询问缺失的决定，不再反复辩论。
+- 只有指出具体缺陷，才推翻此前的答案。没有新证据，不重新打开已经确定的决定。
+- 对外报告决定与理由，不展示「正题—反题—合题」式的过程。检查改变了答案，就说明改了什么、为什么；没有改变，也说明原答案通过了检查。
 
-工具面保持完整是有意的：这样对照实验比的是一套工具面加一段人格。
+这些规则通过提示词约束模型，不是独立的裁判系统，也不保证模型每次都能发现错误。
 
-预设本体就是 `dialectic\` 这个目录，里面有 `cordis.patch.yml`（唯一事实源）、`package.json`（bundle 元数据）、`VERSION`，以及 `skills\` 下的两条技能。
+## 安装与使用
 
-## 安装
+1. 在 DSH 桌面端插件页添加 `dsh-dialecticmode`，安装并启用。需要固定当前版本时，输入 `dsh-dialecticmode@0.0.4`。
+2. 新建会话，在模式列表中选择 **Dialectic 模式**，预设 ID 为 `dialectic`。
+3. 照常提出任务，并提供目标、约束和已有材料。模型应先读相关材料，再决定是否需要反例检验。
 
-预设发布在 npm 上，包名 **`dsh-dialecticmode`**。前提是 Windows 和 dsh 桌面端（本机实测宿主运行时 0.2.1-rc.2）。本机不用留仓库副本。
+本地开发可安装 [dialectic 包目录](https://github.com/Kaczev/dsh-DialecticMode/tree/main/dialectic/)。更新后按插件管理器提示重载或重启，并用新会话确认新预设；不要假定已挂载的会话会立即采用新的修订。若管理器不能直接替换已有安装，可先卸载再重新安装。
 
-在桌面端插件页点 **添加插件**，输入：
+## 预设里有什么
 
+[装配补丁](https://github.com/Kaczev/dsh-DialecticMode/blob/main/dialectic/cordis.patch.yml)定义整个预设。设计上，它相对 DSH 标准模式只增加两项内容：在标准 persona 开场句之后追加辩证指令，以及注册本包的技能目录。宿主身份说明保留，工具组合、计划模式、目标工具、上下文压缩和代理委派等配置按标准模式对齐。
+
+Dialectic 随包提供两条按需加载的技能：
+
+### 动手前：dialectic-counter-case
+
+[技能原文](https://github.com/Kaczev/dsh-DialecticMode/blob/main/dialectic/skills/dialectic-counter-case/SKILL.md)用于检查任务前提。模型从几种动作中选取有用的一两项：说清准备采用的主张和能推翻它的事实，区分用户陈述与环境证据，按用户给出的标准检查方案，或找出会改变实现的需求冲突。
+
+检查没有发现具体缺陷，就保留当前答案，不为了显得谨慎而制造异议。
+
+### 交付或修订前：dialectic-verify
+
+[技能原文](https://github.com/Kaczev/dsh-DialecticMode/blob/main/dialectic/skills/dialectic-verify/SKILL.md)用于决定是否修改、改到什么程度，以及如何验收。模型应指出具体缺陷，保留还能通过检查的部分，处理当前阻碍验收的约束；核验时先根据材料独立回答检查问题，再与草稿比较，改动后检查受影响的调用方和下游。
+
+两条技能的适用方法及来源注释都保留在技能文件中。常驻人格负责判断是否需要检验，技能提供具体做法，不要求每次任务都把所有动作执行一遍。
+
+## 确认安装生效
+
+新会话中应能选中 Dialectic 模式，且预设没有加载错误。检查系统提示词时，应能看到标准模式的模型开场句，以及后接的 `You are a dialectical synthesizer`；技能列表应包含 `dialectic-counter-case` 和 `dialectic-verify`，两者都能加载。
+
+如果模式缺失、显示损坏或找不到技能，维护者可以运行下面的装配检查。它会区分预设配置差异和技能路径解析问题。
+
+## 维护与验证
+
+版本同时记录在 [VERSION](https://github.com/Kaczev/dsh-DialecticMode/blob/main/dialectic/VERSION) 和[包清单](https://github.com/Kaczev/dsh-DialecticMode/blob/main/dialectic/package.json)中，两处必须一致。根 README 是文档源，npm 包内的 README 由[同步脚本](https://github.com/Kaczev/dsh-DialecticMode/blob/main/scripts/sync-readme.mjs)生成；相对链接会转换为 GitHub 链接。
+
+在仓库根目录运行文档检查和打包预检：
+
+```sh
+node scripts/sync-readme.mjs
+node scripts/sync-readme.mjs --verify
+node --test tests/*.test.mjs
+npm pack ./dialectic --dry-run
 ```
-dsh-dialecticmode
+
+[装配检查脚本](https://github.com/Kaczev/dsh-DialecticMode/blob/main/check-composition.mjs)读取本机已安装的官方标准预设，逐项比较插件顺序与配置，只允许 persona 和技能目录两处差异；同时检查版本、技能元数据及技能目录解析。Windows 默认安装路径下，在仓库根目录用 PowerShell 运行：
+
+```powershell
+$env:ELECTRON_RUN_AS_NODE = '1'
+try {
+    & "$env:LOCALAPPDATA\Programs\DeepSeek Harness\DeepSeek Harness.exe" .\check-composition.mjs
+} finally {
+    Remove-Item Env:ELECTRON_RUN_AS_NODE
+}
 ```
 
-要钉版本就写 `dsh-dialecticmode@0.0.4`。装完点 **立即启用**，然后**开一个新会话**，模式列表里会出现 Dialectic 模式。命令行等价物是 `dsh plugin add dsh-dialecticmode`。
+脚本需要桌面端运行时读取 `app.asar` 内的文件，普通 Node 无法代替。技能路径检查会使用 desktop profile 中安装的包；要检查本地源码，应先把本地包安装到该 profile。
 
-更新已有安装时先卸载 `dsh-dialecticmode` 再装一次：`install_bundle` 对已经装着的同一个 bundle 不幂等。已挂载的会话保留它启动时的插件修订，新的预设修订要开一个新会话才拿得到。
-
-bundle 随包装进 profile 的 `node_modules\dsh-dialecticmode`。本地开发时仍可以用 `plugin_manager` 的 `install_bundle` 指向 `dialectic\` 的绝对路径，那样装进来的是 `link:`，改文件即改行为；补丁层由 HMR 监视、即时重载。
-
-0.0.2 起没有生成步骤。0.0.1 的 `make-bundle-patch.mjs`、`agent.cordis.yml`、`preset.yml` 都已删除，它们服务于 dsh 0.2.0 的预设目录机制（`.agent-presets\<id>\` 目录发现）。0.2.1 改成「预设就是一条 `@deepseek-ai/dsh-agent-preset` 补丁行」，既没有目录发现，也没有第二个文件要同步。
-
-## 用起来是什么样
-
-- 答案能用测试、编译器、类型、规范或文档机械核对时，它直接做并核对，不会硬跑一轮反例检验。
-- 请求建立在没审过的假设上、第一版来自「看起来像」的模式匹配、要换掉一个还能用的东西，或者它察觉自己在因为你想听而附和，这时才做一轮反例检验，至多两轮。
-- 输出只有结论与理由：改了什么、为什么。改过了会讲清楚改了什么，没改会说「经得起检查」。
-- 材料里的说法要么核过，要么标明没核，猜测不会被讲成事实。
-- 原有的两句话都还在，dialectic 人格以 `You are a dialectical synthesizer: …` 接在后面。0.0.3 起人格与两条技能全篇用第二人称，不再用 "We"，与官方 skill 一样对读者说 "you"；只有《矛盾论》出处那一行以来源注释（"the mapping … this mode adds"）说明映射是本项目加的，不指向模型。
-
-## 验证
-
-1. 调 `plugin_manager` 的 `list_plugins`，应看到 `include:preset-dialectic`，`fiberPhase` 为 `active`。这一步只证明声明行装上了，子插件的挂载结果看第 2 步。
-2. 开一个新会话。模式列表里应有 Dialectic 模式（id 是 `dialectic`），选中后不报 broken；系统提示里 dialectic 人格在，前面那两句也都在；技能目录里有 `dialectic-counter-case` 与 `dialectic-verify` 两条。
-3. 离线检查，连会话都不用开，用的是安装目录里的官方 standard：
-
-   ```powershell
-   $env:ELECTRON_RUN_AS_NODE='1'
-   & "$env:LOCALAPPDATA\Programs\DeepSeek Harness\DeepSeek Harness.exe" .\check-composition.mjs
-   ```
-
-   最后一行是 `OK` 即通过。脚本核对补丁层与 bundle 元数据、与 standard 的 row 列表逐条相同、差集只有 `persona.config.prefix` 与 `skill-filesystem.config` 两处、persona 不带 `suffix`、全文不出现 `{{cwd}}`、两条技能的 frontmatter 合格，以及 `customSkillDirs` 表达式在 profile 目录上真的解析到本目录。
-
-如果它没出现在模式列表里，或者出现了但被标成 broken，先跑第 3 步。差集多了、row 少了、skills 路径解析不到，脚本都会点名，它验的是同一个组合，比肉眼看模式列表更早发现问题。
-
-## 维护
-
-- npm 的 README 由本文件生成，仅将相对链接改为 GitHub 链接。修改后运行 `node scripts/sync-readme.mjs`；发布前运行 `node scripts/sync-readme.mjs --verify` 与 `node --test tests/*.test.mjs`，检查正文同步、链接和版本一致性。0.0.4 仅同步文档，不改变预设与技能行为。
-
-- `dialectic\cordis.patch.yml` 是装配的唯一事实源，也是 bundle 的补丁层（`package.json` 的 `dsh.bundle.patch` 指它）。`VERSION` 与 `package.json.version` 必须一致，检查脚本会核对。
-- dsh 升级时，把新版本 `…\resources\app.asar\dsh\node_modules\@deepseek-ai\dsh-web-app\presets\standard.patch.yml` 的行抄过来，重新套上那两处改动，再跑 `check-composition.mjs`。对不上时脚本会逐条说明差在哪。
-- 0.2.1 有三个坑，都是这次改动里踩过的：
-  1. `{{cwd}}` 不再是已注册变量。persona 不能再写 `suffix: Your working directory is {{cwd}}.`，写了提示装配会直接失败。工作目录由 runtime context（`Current working directory`）提供，与标准模式一致。
-  2. 预设行在挂载时的 `baseUrl` 是 profile 目录，不是补丁文件目录。`new URL('skills/', baseUrl)` 会指向 `<profile>\skills`，那里什么都没有，而且不报错，技能就这么悄悄消失了。必须用 `createRequire(baseUrl).resolve('dsh-dialecticmode/package.json')` 反查本项目录，bundle 在 profile 的 `node_modules` 里（`link:` 或 npm 安装都能解析到）。改包名就要同步改这行，否则技能静默消失。
-  3. 0.2.0 的写法不再跟 standard 一致：`backgroundMode: continuable`、`tool-ralph`、`tool-subagent-codex` / `claude-code` 这些 extra row 都不是 standard 的一部分，已随本次对齐删除；`time-context` 与 `tool-schedule` 是 standard 新加的，已补上。
-- `dialectic\` 没有运行时依赖。预设里没有自己的 `.mjs` 插件，`check-composition.mjs` 只在维护时用安装目录里的 `yaml`。
-- 发版：改 `dialectic\VERSION` 与 `package.json.version`（两处必须一致），跑 `check-composition.mjs`，提交、推远端，然后 `cd dialectic; npm publish`。包名 `dsh-dialecticmode` 已经固定，改了要同步改补丁里那行 `createRequire`，以及 `check-composition.mjs` 里对它的断言。`dialectic\README.md` 与 `dialectic\LICENSE` 是 npm 页面用的副本，正文以仓库根的两份为准。
-- 历史：0.0.1 的 `suppress-harness-identity.mjs` 用同名空段遮住 host 开场白，`agent.cordis.yml` / `preset.yml` 走目录预设，`make-bundle-patch.mjs` 负责把它复制成补丁层。这些随 0.2.1 的机制变化一并退役，需要时从 git 历史取。0.0.3 把人格与两条技能的人称统一成第二人称（原人格用 "We"），并把版本号从误发的 `0.2.1` 改回 `0.0.3`，那个同名标签与提交已从远端撤掉。0.0.3 这一版后来又重写过一次这份 README，预设本体的行为没有变化，所以版本号不动。
+DSH 升级后应重新运行装配检查。Dialectic 保存了标准模式的配置副本，不会自动继承未来的标准预设变动；若检查发现额外差异，应先对齐新版标准配置，再保留上述两项定制。
 
 ## 许可
 
-见 `LICENSE`。
+本项目采用 [MIT 许可](https://github.com/Kaczev/dsh-DialecticMode/blob/main/LICENSE)。
