@@ -15,6 +15,7 @@ import { createRequire } from "node:module";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { npmReadme } from "./scripts/sync-readme.mjs";
 
 const REPO = dirname(fileURLToPath(import.meta.url));
 const PRESET_DIR = join(REPO, "dialectic");
@@ -83,6 +84,13 @@ if (!Array.isArray(pkg.files) || !pkg.files.includes("cordis.patch.yml") || !pkg
 }
 const version = readFileSync(join(PRESET_DIR, "VERSION"), "utf8").trim();
 if (pkg.version !== version) fail(`package.json version ${pkg.version} != VERSION ${version}`);
+const readme = readFileSync(join(REPO, "README.md"), "utf8");
+if (readFileSync(join(PRESET_DIR, "README.md"), "utf8") !== npmReadme(readme)) {
+  fail("npm README is out of sync; run node scripts/sync-readme.mjs");
+}
+if (/当前版本 \*\*([^*]+)\*\*/u.exec(readme)?.[1] !== version) {
+  fail(`README current version does not match VERSION ${version}`);
+}
 
 // ── 2. 与 standard 逐 row 做差集 ────────────────────────────────────────────
 

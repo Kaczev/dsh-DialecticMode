@@ -2,7 +2,7 @@
 
 给 DeepSeek Harness（dsh）桌面端用的一个 agent preset：标准模式加一段辩证人格，再加两条按需加载的技能。
 
-当前版本 **0.0.3**，版本号写在 `dialectic\VERSION`。
+当前版本 **0.0.4**，版本号写在 `dialectic\VERSION`。
 
 ## 这是什么
 
@@ -28,7 +28,7 @@
 dsh-dialecticmode
 ```
 
-要钉版本就写 `dsh-dialecticmode@0.0.3`。装完点 **立即启用**，然后**开一个新会话**，模式列表里会出现 Dialectic 模式。命令行等价物是 `dsh plugin add dsh-dialecticmode`。
+要钉版本就写 `dsh-dialecticmode@0.0.4`。装完点 **立即启用**，然后**开一个新会话**，模式列表里会出现 Dialectic 模式。命令行等价物是 `dsh plugin add dsh-dialecticmode`。
 
 更新已有安装时先卸载 `dsh-dialecticmode` 再装一次：`install_bundle` 对已经装着的同一个 bundle 不幂等。已挂载的会话保留它启动时的插件修订，新的预设修订要开一个新会话才拿得到。
 
@@ -60,6 +60,8 @@ bundle 随包装进 profile 的 `node_modules\dsh-dialecticmode`。本地开发�
 如果它没出现在模式列表里，或者出现了但被标成 broken，先跑第 3 步。差集多了、row 少了、skills 路径解析不到，脚本都会点名，它验的是同一个组合，比肉眼看模式列表更早发现问题。
 
 ## 维护
+
+- npm 的 README 由本文件生成，仅将相对链接改为 GitHub 链接。修改后运行 `node scripts/sync-readme.mjs`；发布前运行 `node scripts/sync-readme.mjs --verify` 与 `node --test tests/*.test.mjs`，检查正文同步、链接和版本一致性。0.0.4 仅同步文档，不改变预设与技能行为。
 
 - `dialectic\cordis.patch.yml` 是装配的唯一事实源，也是 bundle 的补丁层（`package.json` 的 `dsh.bundle.patch` 指它）。`VERSION` 与 `package.json.version` 必须一致，检查脚本会核对。
 - dsh 升级时，把新版本 `…\resources\app.asar\dsh\node_modules\@deepseek-ai\dsh-web-app\presets\standard.patch.yml` 的行抄过来，重新套上那两处改动，再跑 `check-composition.mjs`。对不上时脚本会逐条说明差在哪。

@@ -1,2 +1,4 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+/README.md text eol=lf
+/dialectic/README.md text eol=lf

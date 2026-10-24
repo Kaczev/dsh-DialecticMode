@@ -1,6 +1,6 @@
 {
     "name": "dsh-dialecticmode",
-    "version": "0.0.3",
+    "version": "0.0.4",
     "description": "Dialectic 模式：dsh 标准模式加一段辩证人格，以及两条按需加载的辩证技能。",
     "license": "MIT",
     "author": "Kaczev",
