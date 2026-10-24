@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="Dialectic">
+  <defs>
+    <linearGradient id="dia-tile" x1="0" y1="0" x2="0" y2="64" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#1A2032"/>
+      <stop offset="1" stop-color="#0F1320"/>
+    </linearGradient>
+    <linearGradient id="dia-face-light" x1="12" y1="12" x2="30" y2="52" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#D3D5FF"/>
+      <stop offset="1" stop-color="#8D96F6"/>
+    </linearGradient>
+    <linearGradient id="dia-face-deep" x1="34" y1="12" x2="53" y2="52" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#7C86F0"/>
+      <stop offset="1" stop-color="#4650BC"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="16" fill="url(#dia-tile)"/>
+  <rect x="0.6" y="0.6" width="62.8" height="62.8" rx="15.6" fill="none" stroke="#FFFFFF" stroke-opacity="0.11" stroke-width="1.2"/>
+  <path d="M32 14L14 32L32 50Z" fill="url(#dia-face-light)"/>
+  <path d="M32 14L50 32L32 50Z" fill="url(#dia-face-deep)"/>
+</svg>

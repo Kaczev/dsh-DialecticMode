@@ -3,6 +3,7 @@
     "version": "0.0.4",
     "description": "Dialectic 模式：dsh 标准模式加一段辩证人格，以及两条按需加载的辩证技能。",
     "license": "MIT",
+    "icon": "./icon.svg",
     "author": "Kaczev",
     "homepage": "https://github.com/Kaczev/dsh-DialecticMode#readme",
     "repository": {
@@ -23,6 +24,7 @@
         "cordis.patch.yml",
         "VERSION",
         "skills",
+        "icon.svg",
         "README.md",
         "LICENSE"
     ],
